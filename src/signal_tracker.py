@@ -6,13 +6,14 @@ from pathlib import Path
 
 import pandas as pd
 
-from src.market_data import get_gold_data
+from src.market_data import get_price_data
 
 
 SIGNAL_LOG_PATH = Path("data/signal_log.csv")
 
 COLUMNS = [
     "timestamp",
+    "symbol",
     "action",
     "entry",
     "stop",
@@ -25,6 +26,10 @@ COLUMNS = [
     "resolved_price",
 ]
 
+# Signals logged before multi-asset support existed have no `symbol` column;
+# every one of them was tracked against gold's data symbol.
+LEGACY_DEFAULT_SYMBOL = "PAXG-USD"
+
 
 def _ensure_log_file() -> None:
     SIGNAL_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -35,6 +40,10 @@ def _ensure_log_file() -> None:
 def load_signal_log() -> pd.DataFrame:
     _ensure_log_file()
     df = pd.read_csv(SIGNAL_LOG_PATH)
+    if "symbol" not in df.columns:
+        df["symbol"] = LEGACY_DEFAULT_SYMBOL
+    else:
+        df["symbol"] = df["symbol"].fillna(LEGACY_DEFAULT_SYMBOL)
     if not df.empty:
         df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True, errors="coerce")
         df["resolved_at"] = pd.to_datetime(df["resolved_at"], utc=True, errors="coerce")
@@ -43,6 +52,7 @@ def load_signal_log() -> pd.DataFrame:
 
 def log_signal(
     now: datetime,
+    symbol: str,
     action: str,
     entry: float,
     stop: float,
@@ -51,13 +61,14 @@ def log_signal(
     trend: str,
     actionable: bool,
 ) -> None:
-    """Log a rule-fired BUY/SELL for outcome tracking, regardless of whether it was
-    actually tradable right now. `actionable` records whether it survived the
-    guardrails (feasibility/confidence/adaptive), so we can learn if the rule
-    itself is right even during stretches where nothing is tradable yet."""
+    """Log a rule-fired BUY/SELL for outcome tracking against `symbol`'s own price data,
+    regardless of whether it was actually tradable right now. `actionable` records whether
+    it survived the guardrails (feasibility/confidence/adaptive), so we can learn if the
+    rule itself is right even during stretches where nothing is tradable yet."""
     _ensure_log_file()
     row = {
         "timestamp": now.isoformat(),
+        "symbol": symbol,
         "action": action,
         "entry": entry,
         "stop": stop,
@@ -70,21 +81,26 @@ def log_signal(
         "resolved_price": "",
     }
     df = pd.read_csv(SIGNAL_LOG_PATH)
+    if "symbol" not in df.columns:
+        df["symbol"] = LEGACY_DEFAULT_SYMBOL
     df = pd.concat([df, pd.DataFrame([row])], ignore_index=True)
     df.to_csv(SIGNAL_LOG_PATH, index=False)
 
 
-def resolve_open_signals() -> None:
-    """Check open signals against price history since they were logged; mark win/loss if stop or target was hit."""
+def resolve_open_signals(symbol: str) -> None:
+    """Check open signals logged against `symbol` against price history since they were
+    logged; mark win/loss if stop or target was hit. Open signals for a different symbol
+    (e.g. left over from before an asset switch) are left untouched here — resolve them
+    by calling this again with that symbol."""
     df = load_signal_log()
     if df.empty:
         return
 
-    open_mask = df["status"] == "open"
+    open_mask = (df["status"] == "open") & (df["symbol"] == symbol)
     if not open_mask.any():
         return
 
-    price_df = get_gold_data(period="3mo", interval="1h")
+    price_df = get_price_data(symbol, period="3mo", interval="1h")
     if price_df.empty:
         return
 
@@ -135,8 +151,11 @@ class SignalStats:
     actionable_win_rate: float
 
 
-def get_signal_stats() -> SignalStats:
+def get_signal_stats(symbol: str | None = None) -> SignalStats:
     df = load_signal_log()
+    if symbol is not None:
+        df = df[df["symbol"] == symbol]
+
     if df.empty:
         return SignalStats(
             total=0, resolved=0, wins=0, losses=0, open_count=0, win_rate=0.0,

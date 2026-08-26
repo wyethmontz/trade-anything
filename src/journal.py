@@ -63,7 +63,7 @@ def append_trade(row: dict[str, object]) -> None:
 
     payload = {
         "timestamp": datetime.now(tz=timezone.utc).isoformat(),
-        "symbol": row.get("symbol", "XAUUSD"),
+        "symbol": row.get("symbol", ""),
         "mode": row.get("mode", ""),
         "signal": row.get("signal", "WAIT"),
         "entry": float(row.get("entry", 0.0)),

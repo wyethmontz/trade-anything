@@ -1,25 +1,43 @@
-# Gold Trading Assistant
+# Trading Assistant
 
-A lightweight trading assistant focused on Gold (XAUUSD proxy via `GC=F`) with:
+A lightweight, multi-asset trading assistant. Which market it trades is a config choice
+(`src/asset_config.py`), not a hardcoded assumption — switch it from the app's sidebar,
+or via the `ASSET_KEY` environment variable for the automated bot. Ships with **Gold**
+(XAUUSD proxy via `PAXG-USD`) and **Natural Gas** (`NG=F`, XM's `NGASCash`) configured;
+add another asset by adding one `AssetConfig` entry.
+
+Features:
 
 - Real-time OHLC data pull from Yahoo Finance
 - Candlestick chart with SMA20 and SMA50 overlays
 - RSI and ATR-based setup detection
 - Rule-based BUY / SELL / WAIT signal
 - Simple risk and position size estimation
-- Cross-asset macro dashboard (DXY, US10Y, VIX, Oil, Silver, S&P 500)
-- Weighted macro bias score to estimate directional pressure on gold
-- Live Gold ticker-linked headline feed
-- Event risk checklist for high-impact macro sessions
+- Cross-asset macro dashboard (drivers are per-asset, e.g. DXY/US10Y/VIX/Oil/Silver for gold)
+- Weighted macro bias score to estimate directional pressure on the active asset
+- Live ticker-linked headline feed for the active asset
+- Event risk checklist for high-impact macro sessions (plus asset-specific items)
 - External macro news feeds (Reuters/MarketWatch/FXStreet RSS)
-- XM broker guardrails (lot step, min lot, spread-aware risk feasibility)
+- Broker guardrails (lot step, min lot, spread-aware risk feasibility)
 - Adaptive loss review journal that tightens risk/confidence after drawdowns
 
-## XM Setup Notes
+## Switching Assets
 
-Before using live funds, set these exactly from your MT5 Symbol Specification:
+- **In the app**: pick from the "Asset" dropdown at the top of the sidebar.
+- **For the automated bot**: set the `ASSET_KEY` environment variable (`gold` or
+  `natural_gas`) before running `run_bot.py`, or as a repo variable/secret for the
+  GitHub Actions workflow. Defaults to `natural_gas`.
+- **To add a new asset**: add an `AssetConfig` entry in `src/asset_config.py` with its
+  data symbol, broker symbol, contract spec, macro drivers, and news keywords.
 
-- Contract size (oz per 1.00 lot)
+Signals logged to `data/signal_log.csv` are tagged with the symbol they were traded
+against, so switching assets doesn't mix up win/loss tracking between them.
+
+## Broker Setup Notes
+
+Before using live funds, set these exactly from your broker's symbol specification:
+
+- Contract size (units per 1.00 lot)
 - Minimum lot
 - Lot step
 - Maximum lot
@@ -65,7 +83,6 @@ The app analyzes recent closed trades and automatically recommends tighter risk 
 
 ## Notes
 
-- Data symbol: `GC=F` (COMEX Gold Futures proxy).
 - The assistant is educational and not financial advice.
 - Always confirm signals with your own analysis and broker constraints.
 
@@ -87,21 +104,22 @@ python run_bot.py
 |---|---|---|
 | `TELEGRAM_BOT_TOKEN` | Bot token from BotFather | required to send |
 | `TELEGRAM_CHAT_ID` | Target chat/channel id | required to send |
-| `ACCOUNT_BALANCE` | Account balance in USD | `64.18` |
+| `ASSET_KEY` | Which asset to trade (`gold`, `natural_gas`) | `natural_gas` |
+| `ACCOUNT_BALANCE` | Account balance in USD | active asset's default |
 | `RISK_PCT` | Risk per trade (%) | `0.5` |
 | `CONFIDENCE_FLOOR` | Minimum confidence to act on a signal | `65` |
 | `ADAPTIVE_MODE` | Tighten risk/confidence after a loss streak | `true` |
-| `XM_SYMBOL`, `CONTRACT_SIZE`, `MIN_LOT`, `LOT_STEP`, `MAX_LOT`, `SPREAD_USD` | Broker guardrail specs | match XM defaults in `app.py` |
+| `XM_SYMBOL`, `CONTRACT_SIZE`, `MIN_LOT`, `LOT_STEP`, `MAX_LOT`, `SPREAD_USD` | Broker guardrail specs | active asset's defaults in `src/asset_config.py` |
 | `ONLY_SEND_BUY` | Only send a Telegram message when the signal is `BUY` (skips `SELL` and `WAIT`). Set to `false` to receive all signals again. | `true` |
 | `INCLUDE_WAIT_SIGNALS` | When `ONLY_SEND_BUY` is `false`, whether to also send `WAIT` signals | `true` |
 
 ### Automated schedule
 
-Same pattern as `fuel-forecast-bot-py`: [.github/workflows/signal.yml](.github/workflows/signal.yml) exposes a `workflow_dispatch` trigger, and [cron-job.org](https://cron-job.org) calls it hourly via the GitHub Actions API. Set `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` as repo secrets, and optionally `ACCOUNT_BALANCE` / `RISK_PCT` as repo variables, before enabling the schedule.
+Same pattern as `fuel-forecast-bot-py`: [.github/workflows/signal.yml](.github/workflows/signal.yml) exposes a `workflow_dispatch` trigger, and [cron-job.org](https://cron-job.org) calls it hourly via the GitHub Actions API. Set `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` as repo secrets, and optionally `ASSET_KEY` / `ACCOUNT_BALANCE` / `RISK_PCT` as repo variables, before enabling the schedule.
 
 ### Run with Docker
 
 ```bash
-docker build -t gold-signal-bot .
-docker run -e TELEGRAM_BOT_TOKEN=your_bot_token -e TELEGRAM_CHAT_ID=your_chat_id gold-signal-bot
+docker build -t trading-signal-bot .
+docker run -e TELEGRAM_BOT_TOKEN=your_bot_token -e TELEGRAM_CHAT_ID=your_chat_id -e ASSET_KEY=natural_gas trading-signal-bot
 ```

@@ -7,7 +7,7 @@ import math
 @dataclass
 class BrokerSpec:
     symbol: str
-    contract_size_oz_per_lot: float
+    contract_size_per_lot: float
     min_lot: float
     lot_step: float
     max_lot: float
@@ -38,9 +38,9 @@ def evaluate_trade_feasibility(
     spec: BrokerSpec,
 ) -> FeasibilityResult:
     risk_budget_usd = account_balance * (risk_pct / 100)
-    risk_per_oz = abs(entry - stop)
+    risk_per_unit = abs(entry - stop)
 
-    if risk_per_oz <= 0:
+    if risk_per_unit <= 0:
         return FeasibilityResult(
             tradable=False,
             reason="Invalid stop distance.",
@@ -50,7 +50,7 @@ def evaluate_trade_feasibility(
             effective_risk_pct=0.0,
         )
 
-    all_in_risk_per_lot = (risk_per_oz + max(spec.spread_usd, 0.0)) * spec.contract_size_oz_per_lot
+    all_in_risk_per_lot = (risk_per_unit + max(spec.spread_usd, 0.0)) * spec.contract_size_per_lot
     if all_in_risk_per_lot <= 0:
         return FeasibilityResult(
             tradable=False,

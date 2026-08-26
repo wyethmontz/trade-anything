@@ -14,7 +14,7 @@ class Advice:
     stop_loss: float
     take_profit: float
     risk_amount: float
-    position_size_oz: float
+    position_size_units: float
     notes: str
 
 
@@ -32,10 +32,10 @@ def _trend(row: pd.Series) -> str:
 
 def _position_size(account_balance: float, risk_pct: float, entry: float, stop: float) -> tuple[float, float]:
     risk_amount = account_balance * (risk_pct / 100)
-    risk_per_oz = abs(entry - stop)
-    if risk_per_oz <= 0:
+    risk_per_unit = abs(entry - stop)
+    if risk_per_unit <= 0:
         return risk_amount, 0.0
-    return risk_amount, risk_amount / risk_per_oz
+    return risk_amount, risk_amount / risk_per_unit
 
 
 def build_advice(df: pd.DataFrame, account_balance: float, risk_pct: float) -> Advice:
@@ -48,7 +48,7 @@ def build_advice(df: pd.DataFrame, account_balance: float, risk_pct: float) -> A
             stop_loss=0.0,
             take_profit=0.0,
             risk_amount=0.0,
-            position_size_oz=0.0,
+            position_size_units=0.0,
             notes="Not enough candles yet for reliable indicators.",
         )
 
@@ -80,7 +80,7 @@ def build_advice(df: pd.DataFrame, account_balance: float, risk_pct: float) -> A
         stop = close - (1.0 * atr)
         target = close + (1.0 * atr)
 
-    risk_amount, size_oz = _position_size(account_balance, risk_pct, close, stop)
+    risk_amount, size_units = _position_size(account_balance, risk_pct, close, stop)
 
     confidence = 35
     if trend in {"Bullish", "Bearish"}:
@@ -100,6 +100,6 @@ def build_advice(df: pd.DataFrame, account_balance: float, risk_pct: float) -> A
         stop_loss=stop,
         take_profit=target,
         risk_amount=risk_amount,
-        position_size_oz=size_oz,
+        position_size_units=size_units,
         notes=notes,
     )

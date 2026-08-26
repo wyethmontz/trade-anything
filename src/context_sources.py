@@ -7,48 +7,13 @@ import feedparser
 import pandas as pd
 import yfinance as yf
 
+from src.asset_config import AssetConfig
 
-# direction_for_gold: +1 means an increase in this asset is generally bullish for gold.
-ASSET_DRIVERS = [
-    {"symbol": "DX-Y.NYB", "name": "US Dollar Index (DXY)", "weight": 30, "direction_for_gold": -1},
-    {"symbol": "^TNX", "name": "US 10Y Yield", "weight": 25, "direction_for_gold": -1},
-    {"symbol": "^VIX", "name": "VIX", "weight": 15, "direction_for_gold": 1},
-    {"symbol": "CL=F", "name": "WTI Crude", "weight": 10, "direction_for_gold": 1},
-    {"symbol": "SI=F", "name": "Silver", "weight": 10, "direction_for_gold": 1},
-    {"symbol": "^GSPC", "name": "S&P 500", "weight": 10, "direction_for_gold": -1},
-    {"symbol": "TLT", "name": "US 20Y Bond ETF (TLT)", "weight": 5, "direction_for_gold": 1},
-    {"symbol": "BTC-USD", "name": "Bitcoin", "weight": 5, "direction_for_gold": -1},
-    {"symbol": "GDX", "name": "Gold Miners ETF (GDX)", "weight": 5, "direction_for_gold": 1},
-]
 
 EXTERNAL_NEWS_FEEDS = [
     {"source": "Reuters Markets", "url": "https://www.reutersagency.com/feed/?best-topics=markets&post_type=best"},
     {"source": "MarketWatch Commodities", "url": "https://feeds.content.dowjones.io/public/rss/RSSMarketWatchCommodities"},
     {"source": "FXStreet", "url": "https://www.fxstreet.com/rss/news"},
-]
-
-BULLISH_GOLD_KEYWORDS = [
-    "safe haven",
-    "geopolitical",
-    "war",
-    "tension",
-    "inflation",
-    "recession",
-    "rate cut",
-    "dovish",
-    "debt",
-    "uncertainty",
-]
-
-BEARISH_GOLD_KEYWORDS = [
-    "rate hike",
-    "hawkish",
-    "strong dollar",
-    "yield rise",
-    "risk-on",
-    "cooling inflation",
-    "ceasefire",
-    "equity rally",
 ]
 
 
@@ -58,12 +23,12 @@ def _normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def get_macro_snapshot(period: str = "5d", interval: str = "1h") -> tuple[pd.DataFrame, float]:
-    """Return cross-asset movement and a weighted directional bias score for gold."""
+def get_macro_snapshot(asset: AssetConfig, period: str = "5d", interval: str = "1h") -> tuple[pd.DataFrame, float]:
+    """Return cross-asset movement and a weighted directional bias score for `asset`."""
     rows: list[dict[str, Any]] = []
     weighted_score = 0.0
 
-    for driver in ASSET_DRIVERS:
+    for driver in asset.macro_drivers:
         symbol = driver["symbol"]
 
         data = yf.download(
@@ -89,12 +54,12 @@ def get_macro_snapshot(period: str = "5d", interval: str = "1h") -> tuple[pd.Dat
             continue
 
         change_pct = ((last - prev) / prev) * 100
-        direction_for_gold = int(driver["direction_for_gold"])
+        direction = int(driver["direction"])
         weight = float(driver["weight"])
 
         # Cap single-factor impact so one volatile proxy does not dominate.
         normalized_move = max(min(change_pct / 0.30, 2.0), -2.0)
-        contribution = direction_for_gold * normalized_move * weight
+        contribution = direction * normalized_move * weight
         weighted_score += contribution
 
         rows.append(
@@ -103,7 +68,7 @@ def get_macro_snapshot(period: str = "5d", interval: str = "1h") -> tuple[pd.Dat
                 "Symbol": symbol,
                 "Last": last,
                 "Change %": change_pct,
-                "Gold Impact": "Bullish" if contribution > 0 else "Bearish" if contribution < 0 else "Neutral",
+                "Impact": "Bullish" if contribution > 0 else "Bearish" if contribution < 0 else "Neutral",
                 "Contribution": contribution,
             }
         )
@@ -113,16 +78,16 @@ def get_macro_snapshot(period: str = "5d", interval: str = "1h") -> tuple[pd.Dat
 
     snapshot = pd.DataFrame(rows).sort_values("Contribution", ascending=False)
 
-    max_score = sum(driver["weight"] for driver in ASSET_DRIVERS) * 2
-    bias_score = 100 * (weighted_score / max_score)
+    max_score = sum(driver["weight"] for driver in asset.macro_drivers) * 2
+    bias_score = 100 * (weighted_score / max_score) if max_score else 0.0
     bias_score = float(max(min(bias_score, 100), -100))
 
     return snapshot, bias_score
 
 
-def get_gold_news(limit: int = 8) -> pd.DataFrame:
-    """Fetch latest news items attached to the Gold futures ticker from Yahoo Finance."""
-    ticker = yf.Ticker("GC=F")
+def get_asset_news(asset: AssetConfig, limit: int = 8) -> pd.DataFrame:
+    """Fetch latest news items attached to the asset's Yahoo Finance ticker."""
+    ticker = yf.Ticker(asset.yahoo_news_symbol)
     items = ticker.news or []
 
     parsed_rows: list[dict[str, str]] = []
@@ -151,10 +116,10 @@ def get_gold_news(limit: int = 8) -> pd.DataFrame:
     return pd.DataFrame(parsed_rows)
 
 
-def get_external_gold_news(limit_per_feed: int = 4) -> pd.DataFrame:
-    """Fetch external macro/commodity headlines and keep gold-relevant titles."""
+def get_external_asset_news(asset: AssetConfig, limit_per_feed: int = 4) -> pd.DataFrame:
+    """Fetch external macro/commodity headlines and keep titles relevant to `asset`."""
     rows: list[dict[str, str]] = []
-    focus_terms = ["gold", "xau", "fed", "inflation", "yield", "dollar", "treasury", "geopolitical"]
+    focus_terms = asset.news_feed_focus_terms
 
     for feed in EXTERNAL_NEWS_FEEDS:
         parsed = feedparser.parse(feed["url"])
@@ -187,18 +152,18 @@ def get_external_gold_news(limit_per_feed: int = 4) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-def score_gold_news_sentiment(news_df: pd.DataFrame) -> float:
-    """Return a simple sentiment score in [-100, 100] where positive is bullish for gold."""
+def score_news_sentiment(news_df: pd.DataFrame, asset: AssetConfig) -> float:
+    """Return a simple sentiment score in [-100, 100] where positive is bullish for `asset`."""
     if news_df.empty or "Headline" not in news_df.columns:
         return 0.0
 
     score = 0
     for headline in news_df["Headline"].dropna().astype(str):
         text = headline.lower()
-        for keyword in BULLISH_GOLD_KEYWORDS:
+        for keyword in asset.bullish_keywords:
             if keyword in text:
                 score += 1
-        for keyword in BEARISH_GOLD_KEYWORDS:
+        for keyword in asset.bearish_keywords:
             if keyword in text:
                 score -= 1
 
