@@ -6,7 +6,7 @@ from __future__ import annotations
 # (7d for 1m, 60d for 15m) while comfortably covering how long a signal at that
 # granularity should take to resolve.
 TRADING_MODES = {
-    "scalp": {"period": "1d", "interval": "1m", "resolve_period": "7d", "resolve_interval": "1m"},
+    "scalp": {"period": "5d", "interval": "1m", "resolve_period": "7d", "resolve_interval": "1m"},
     "intraday": {"period": "5d", "interval": "15m", "resolve_period": "60d", "resolve_interval": "15m"},
     "swing": {"period": "1mo", "interval": "1h", "resolve_period": "3mo", "resolve_interval": "1h"},
     "position": {"period": "6mo", "interval": "1d", "resolve_period": "2y", "resolve_interval": "1d"},
