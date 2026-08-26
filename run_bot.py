@@ -11,7 +11,8 @@ from src.indicators import add_indicators
 from src.journal import get_journal_stats, load_journal
 from src.market_data import get_price_data
 from src.notifier import send_telegram
-from src.signal_tracker import log_signal, resolve_open_signals
+from src.signal_tracker import has_open_signal, log_signal, resolve_open_signals
+from src.trading_mode import DEFAULT_TRADING_MODE, get_trading_mode
 
 
 def _env_float(name: str, default: float) -> float:
@@ -75,8 +76,11 @@ def main() -> None:
     max_lot = _env_float("MAX_LOT", asset.max_lot)
     spread_usd = _env_float("SPREAD_USD", asset.spread_estimate)
 
-    print(f"Fetching {asset.display_name} data (Swing 1h)...")
-    raw_df = get_price_data(asset.data_symbol, period="1mo", interval="1h")
+    trading_mode_key = os.environ.get("TRADING_MODE", DEFAULT_TRADING_MODE)
+    trading_mode = get_trading_mode(trading_mode_key)
+
+    print(f"Fetching {asset.display_name} data ({trading_mode_key}, {trading_mode['interval']})...")
+    raw_df = get_price_data(asset.data_symbol, period=trading_mode["period"], interval=trading_mode["interval"])
     if raw_df.empty:
         print("No market data returned, aborting run.")
         return
@@ -142,20 +146,33 @@ def main() -> None:
     downgraded = execution_signal != advice.action
 
     print("Resolving open tracked signals against fresh price data...")
-    resolve_open_signals(symbol=asset.data_symbol)
+    resolve_open_signals(
+        symbol=asset.data_symbol,
+        period=trading_mode["resolve_period"],
+        interval=trading_mode["resolve_interval"],
+    )
 
+    # When polled frequently (e.g. every couple of minutes for scalping), the same
+    # trend can keep firing the same BUY/SELL on every run. Skip logging/notifying
+    # again while that signal is still open — a fresh notification only makes sense
+    # once it resolves (win/loss) and a new setup fires.
+    is_duplicate = False
     if advice.action in ("BUY", "SELL"):
-        log_signal(
-            now=now,
-            symbol=asset.data_symbol,
-            action=advice.action,
-            entry=advice.entry,
-            stop=advice.stop_loss,
-            target=advice.take_profit,
-            confidence=advice.confidence,
-            trend=advice.trend,
-            actionable=(execution_signal == advice.action),
-        )
+        is_duplicate = has_open_signal(asset.data_symbol, advice.action)
+        if is_duplicate:
+            print(f"[run_bot] {advice.action} on {asset.data_symbol} is already open and unresolved; skipping duplicate log/notify.")
+        else:
+            log_signal(
+                now=now,
+                symbol=asset.data_symbol,
+                action=advice.action,
+                entry=advice.entry,
+                stop=advice.stop_loss,
+                target=advice.take_profit,
+                confidence=advice.confidence,
+                trend=advice.trend,
+                actionable=(execution_signal == advice.action),
+            )
 
     message = build_message(
         now=now,
@@ -173,6 +190,10 @@ def main() -> None:
     except UnicodeEncodeError:
         print(message.encode("ascii", errors="replace").decode("ascii"))
     print("-----------------------\n")
+
+    if is_duplicate:
+        print("[run_bot] Skipping Telegram send: duplicate of an already-open signal.")
+        return
 
     include_wait = os.environ.get("INCLUDE_WAIT_SIGNALS", "true").lower() == "true"
     only_send_buy = os.environ.get("ONLY_SEND_BUY", "true").lower() == "true"

@@ -1,7 +1,13 @@
 name: Trading Signal Bot
 
 on:
-  workflow_dispatch:  # triggered hourly by cron-job.org
+  workflow_dispatch:  # triggered on a schedule by cron-job.org
+
+# Runs are queued instead of running in parallel, so two overlapping triggers
+# (e.g. a short polling interval) can't race on the signal-log commit/push below.
+concurrency:
+  group: trading-signal-bot
+  cancel-in-progress: false
 
 permissions:
   contents: write  # needed to commit the updated signal log back to the repo
@@ -28,6 +34,7 @@ jobs:
           ACCOUNT_BALANCE: ${{ secrets.ACCOUNT_BALANCE }}
           RISK_PCT: ${{ secrets.RISK_PCT }}
           ASSET_KEY: ${{ vars.ASSET_KEY || secrets.ASSET_KEY || 'natural_gas' }}
+          TRADING_MODE: ${{ vars.TRADING_MODE || secrets.TRADING_MODE || 'scalp' }}
           ONLY_SEND_BUY: ${{ vars.ONLY_SEND_BUY || secrets.ONLY_SEND_BUY || 'true' }}
         run: python run_bot.py
 
@@ -37,4 +44,5 @@ jobs:
           git config user.email "actions@users.noreply.github.com"
           git add data/signal_log.csv
           git diff --cached --quiet || git commit -m "chore: update signal log"
+          git pull --rebase origin main
           git push

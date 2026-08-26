@@ -105,6 +105,7 @@ python run_bot.py
 | `TELEGRAM_BOT_TOKEN` | Bot token from BotFather | required to send |
 | `TELEGRAM_CHAT_ID` | Target chat/channel id | required to send |
 | `ASSET_KEY` | Which asset to trade (`gold`, `natural_gas`) | `natural_gas` |
+| `TRADING_MODE` | Candle granularity: `scalp` (1m), `intraday` (15m), `swing` (1h), `position` (1d). Also controls how far back open signals are re-checked for a stop/target hit. | `scalp` |
 | `ACCOUNT_BALANCE` | Account balance in USD | active asset's default |
 | `RISK_PCT` | Risk per trade (%) | `0.5` |
 | `CONFIDENCE_FLOOR` | Minimum confidence to act on a signal | `65` |
@@ -115,7 +116,9 @@ python run_bot.py
 
 ### Automated schedule
 
-Same pattern as `fuel-forecast-bot-py`: [.github/workflows/signal.yml](.github/workflows/signal.yml) exposes a `workflow_dispatch` trigger, and [cron-job.org](https://cron-job.org) calls it hourly via the GitHub Actions API. Set `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` as repo secrets, and optionally `ASSET_KEY` / `ACCOUNT_BALANCE` / `RISK_PCT` as repo variables, before enabling the schedule.
+[.github/workflows/signal.yml](.github/workflows/signal.yml) exposes a `workflow_dispatch` trigger, and [cron-job.org](https://cron-job.org) calls it on a schedule via the GitHub Actions API. Set `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` as repo secrets, and optionally `ASSET_KEY` / `TRADING_MODE` / `ACCOUNT_BALANCE` / `RISK_PCT` as repo variables, before enabling the schedule. Runs are queued (see `concurrency` in the workflow) so overlapping triggers can't race on the signal-log commit, and duplicate BUY/SELL signals from the same still-open setup are skipped automatically (`signal_tracker.has_open_signal`).
+
+**Polling frequency vs. GitHub Actions minutes**: this repo is private, and GitHub Actions bills against a monthly minutes quota (2,000 min/month on the free tier), with each run rounding up to at least 1 billed minute regardless of how fast it finishes. Polling every 1-2 minutes means ~700+ runs/day — enough to exhaust the free quota in a few days. If you need true multi-minute scalping cadence sustainably, run `run_bot.py` from somewhere with its own always-on scheduler (a local cron job, a small VPS, etc.) instead of GitHub Actions, and reserve the Actions workflow for a slower cadence (hourly/every-15-min) that stays within the free quota.
 
 ### Run with Docker
 
