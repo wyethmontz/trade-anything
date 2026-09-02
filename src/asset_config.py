@@ -99,9 +99,46 @@ NATURAL_GAS = AssetConfig(
 )
 
 
+BRENT_CRUDE = AssetConfig(
+    key="brent_crude",
+    display_name="Brent Crude Oil",
+    data_symbol="BZ=F",  # ICE Brent Crude futures, front month (Yahoo Finance)
+    yahoo_news_symbol="BZ=F",
+    broker_symbol="BRENTCash",
+    unit_label="barrels",
+    contract_size_per_lot=1000.0,
+    min_lot=0.01,
+    lot_step=0.01,
+    max_lot=50.0,
+    spread_estimate=0.05,
+    default_account_balance=64.18,
+    macro_drivers=(
+        {"symbol": "CL=F", "name": "WTI Crude Oil", "weight": 30, "direction": 1},
+        {"symbol": "DX-Y.NYB", "name": "US Dollar Index (DXY)", "weight": 25, "direction": -1},
+        {"symbol": "XLE", "name": "Energy Sector ETF (XLE)", "weight": 20, "direction": 1},
+        {"symbol": "^VIX", "name": "VIX", "weight": 15, "direction": 1},
+        {"symbol": "^TNX", "name": "US 10Y Yield", "weight": 10, "direction": -1},
+    ),
+    news_feed_focus_terms=("brent", "oil", "opec", "crude", "barrel", "energy", "supply"),
+    bullish_keywords=(
+        "opec cut", "production cut", "supply disruption", "sanctions", "pipeline outage",
+        "geopolitical", "war", "tension", "inventory draw", "demand surge",
+    ),
+    bearish_keywords=(
+        "opec increase", "output hike", "oversupply", "demand slowdown", "recession",
+        "inventory build", "ceasefire", "strong dollar", "record output",
+    ),
+    event_checklist_extra=(
+        "Weekly EIA Crude Oil Inventory Report (Wednesdays)",
+        "OPEC+ meeting announcements and production quota changes",
+    ),
+)
+
+
 _REGISTRY: dict[str, AssetConfig] = {
     GOLD.key: GOLD,
     NATURAL_GAS.key: NATURAL_GAS,
+    BRENT_CRUDE.key: BRENT_CRUDE,
 }
 
 DEFAULT_ASSET_KEY = "natural_gas"

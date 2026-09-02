@@ -3,8 +3,9 @@
 A lightweight, multi-asset trading assistant. Which market it trades is a config choice
 (`src/asset_config.py`), not a hardcoded assumption — switch it from the app's sidebar,
 or via the `ASSET_KEY` environment variable for the automated bot. Ships with **Gold**
-(XAUUSD proxy via `PAXG-USD`) and **Natural Gas** (`NG=F`, XM's `NGASCash`) configured;
-add another asset by adding one `AssetConfig` entry.
+(XAUUSD proxy via `PAXG-USD`), **Natural Gas** (`NG=F`, XM's `NGASCash`), and **Brent
+Crude Oil** (`BZ=F`, XM's `BRENTCash`) configured; add another asset by adding one
+`AssetConfig` entry.
 
 Features:
 
@@ -104,7 +105,7 @@ python run_bot.py
 |---|---|---|
 | `TELEGRAM_BOT_TOKEN` | Bot token from BotFather | required to send |
 | `TELEGRAM_CHAT_ID` | Target chat/channel id | required to send |
-| `ASSET_KEY` | Which asset to trade (`gold`, `natural_gas`) | `natural_gas` |
+| `ASSET_KEY` | Which asset to trade (`gold`, `natural_gas`, `brent_crude`) | `natural_gas` |
 | `TRADING_MODE` | Candle granularity: `scalp` (1m), `intraday` (15m), `swing` (1h), `position` (1d). Also controls how far back open signals are re-checked for a stop/target hit. | `scalp` |
 | `ACCOUNT_BALANCE` | Account balance in USD | active asset's default |
 | `RISK_PCT` | Risk per trade (%) | `0.5` |
