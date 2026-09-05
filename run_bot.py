@@ -37,6 +37,10 @@ def _format_key_levels(key_levels: KeyLevels) -> str:
         lines.append(
             f"Prior Week High/Low: {_fmt(key_levels.prior_week_high)} / {_fmt(key_levels.prior_week_low)}"
         )
+    if key_levels.round_level_above is not None or key_levels.round_level_below is not None:
+        lines.append(
+            f"Round Numbers Above/Below: {_fmt(key_levels.round_level_above)} / {_fmt(key_levels.round_level_below)}"
+        )
     if not lines:
         return ""
     return "\n\nKey Levels:\n" + "\n".join(lines)

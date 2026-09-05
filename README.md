@@ -61,6 +61,9 @@ The app will downgrade a trade to `WAIT` when:
   be confirmed as a pivot.
 - **Prior Day / Week High-Low**: the high and low of the most recently *completed* calendar
   day/week, excluding the still-in-progress current one.
+- **Round Numbers**: the nearest psychological round-number levels above and below the current
+  price, at a spacing scaled to the instrument's price magnitude (e.g. $100 steps for ~$4400
+  gold, $1 steps for ~$95 oil, $0.10 steps for ~$2.50 natural gas).
 
 These are informational (shown on the chart and in every Telegram/app signal) and don't feed
 into the advisor's entry/SL/TP or any guardrail. A level shows as unavailable when there isn't
