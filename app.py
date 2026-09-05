@@ -7,10 +7,12 @@ import streamlit as st
 from src.advisor import build_advice
 from src.asset_config import DEFAULT_ASSET_KEY, get_asset, list_assets
 from src.broker_guardrails import BrokerSpec, evaluate_trade_feasibility
+from src.challenge_guardrail import evaluate_challenge_limits, get_or_set_day_start_balance, utc_today
 from src.context_sources import get_asset_news, get_external_asset_news, get_macro_snapshot, score_news_sentiment
 from src.indicators import add_indicators
 from src.journal import append_trade, get_journal_stats, load_journal
 from src.market_data import get_price_data
+from src.prop_firm_rules import get_phase
 
 
 st.set_page_config(page_title="Trading Assistant", page_icon="📈", layout="wide")
@@ -101,6 +103,20 @@ with st.sidebar:
     max_lot = st.number_input("Maximum Lot", min_value=0.01, value=asset.max_lot, step=0.01)
     spread_usd = st.number_input("Estimated Spread (USD)", min_value=0.0, value=asset.spread_estimate, step=0.01)
 
+    challenge_phase = None
+    challenge_starting_balance = account_balance
+    if asset.prop_firm_phase_key:
+        st.subheader("Prop Firm Challenge Guardrail")
+        challenge_phase = get_phase(asset.prop_firm_phase_key)
+        st.caption(f"Phase: {challenge_phase.display_name} — {challenge_phase.max_loss_pct:.0f}% max loss, "
+                   f"{challenge_phase.max_daily_loss_pct:.0f}% max daily loss")
+        challenge_starting_balance = st.number_input(
+            "Challenge Starting Balance (USD)",
+            min_value=1.0,
+            value=asset.challenge_starting_balance or account_balance,
+            step=10.0,
+        )
+
 st.title(f"{asset.display_name} Trading Assistant")
 st.caption(f"Rule-based assistant for {asset.broker_symbol} ideas. Educational use only, not financial advice.")
 
@@ -176,6 +192,16 @@ if advice.action == "BUY":
 elif advice.action == "SELL":
     source_alignment = macro_bias <= 0 and news_sentiment <= 10
 
+challenge_result = None
+if challenge_phase is not None:
+    day_start_balance = get_or_set_day_start_balance(asset.data_symbol, account_balance, utc_today())
+    challenge_result = evaluate_challenge_limits(
+        phase=challenge_phase,
+        starting_balance=challenge_starting_balance,
+        current_balance=account_balance,
+        day_start_balance=day_start_balance,
+    )
+
 execution_signal = advice.action
 if advice.action != "WAIT":
     if advice.confidence < effective_confidence_floor:
@@ -183,6 +209,8 @@ if advice.action != "WAIT":
     if not feasibility.tradable:
         execution_signal = "WAIT"
     if adaptive_mode and journal_stats.loss_streak >= 2 and not source_alignment:
+        execution_signal = "WAIT"
+    if challenge_result is not None and challenge_result.blocked:
         execution_signal = "WAIT"
 
 left, right = st.columns([2.2, 1.0], gap="large")
@@ -221,7 +249,7 @@ with right:
     st.markdown('<div class="panel">', unsafe_allow_html=True)
     st.markdown(f"### Signal: <span class='{signal_class}'>{execution_signal}</span>", unsafe_allow_html=True)
     if execution_signal != advice.action:
-        st.warning("Signal downgraded to WAIT by adaptive guardrails (risk/confidence/source alignment).")
+        st.warning("Signal downgraded to WAIT by guardrails (risk/confidence/source alignment/challenge limits).")
     st.write(advice.notes)
     st.write(f"Entry: ${advice.entry:,.2f}")
     st.write(f"Stop Loss: ${advice.stop_loss:,.2f}")
@@ -241,6 +269,16 @@ if feasibility.tradable:
     st.success(feasibility.reason)
 else:
     st.error(feasibility.reason)
+
+if challenge_result is not None:
+    st.subheader(f"Prop Firm Challenge Guardrail ({challenge_phase.display_name})")
+    ch1, ch2 = st.columns(2)
+    ch1.metric("Daily Loss Used", f"{challenge_result.daily_loss_pct:.2f}% / {challenge_phase.max_daily_loss_pct:.0f}%")
+    ch2.metric("Total Loss Used", f"{challenge_result.total_loss_pct:.2f}% / {challenge_phase.max_loss_pct:.0f}%")
+    if challenge_result.blocked:
+        st.error(challenge_result.reason)
+    else:
+        st.success(challenge_result.reason)
 
 st.subheader("Latest Candles")
 preview_df = analysis_df[["Open", "High", "Low", "Close", "SMA20", "SMA50", "RSI14", "ATR14"]].tail(20)
