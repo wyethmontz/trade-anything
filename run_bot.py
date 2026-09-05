@@ -254,7 +254,7 @@ def main() -> None:
         return
 
     include_wait = os.environ.get("INCLUDE_WAIT_SIGNALS", "true").lower() == "true"
-    only_send_buy = os.environ.get("ONLY_SEND_BUY", "true").lower() == "true"
+    only_send_buy = os.environ.get("ONLY_SEND_BUY", "false").lower() == "true"
 
     if only_send_buy and execution_signal != "BUY":
         print(f"[run_bot] ONLY_SEND_BUY is enabled and signal is {execution_signal}, skipping Telegram send.")

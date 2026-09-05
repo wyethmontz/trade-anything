@@ -35,7 +35,7 @@ jobs:
           RISK_PCT: ${{ secrets.RISK_PCT }}
           ASSET_KEY: ${{ vars.ASSET_KEY || secrets.ASSET_KEY || 'natural_gas' }}
           TRADING_MODE: ${{ vars.TRADING_MODE || secrets.TRADING_MODE || 'scalp' }}
-          ONLY_SEND_BUY: ${{ vars.ONLY_SEND_BUY || secrets.ONLY_SEND_BUY || 'true' }}
+          ONLY_SEND_BUY: ${{ vars.ONLY_SEND_BUY || secrets.ONLY_SEND_BUY || 'false' }}
         run: python run_bot.py
 
       - name: Persist signal log

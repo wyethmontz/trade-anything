@@ -145,7 +145,7 @@ python run_bot.py
 | `XM_SYMBOL`, `CONTRACT_SIZE`, `MIN_LOT`, `LOT_STEP`, `MAX_LOT`, `SPREAD_USD` | Broker guardrail specs | active asset's defaults in `src/asset_config.py` |
 | `PROP_FIRM_PHASE` | Prop-firm challenge phase to enforce (`one_step`, `two_step`, `funded`) from `src/prop_firm_rules.py`, or unset to disable | active asset's `prop_firm_phase_key` (Gold defaults to `funded`) |
 | `CHALLENGE_STARTING_BALANCE` | The funded/challenge account's initial size, used for the max-loss % check | active asset's `challenge_starting_balance`, else `ACCOUNT_BALANCE` |
-| `ONLY_SEND_BUY` | Only send a Telegram message when the signal is `BUY` (skips `SELL` and `WAIT`). Set to `false` to receive all signals again. | `true` |
+| `ONLY_SEND_BUY` | Only send a Telegram message when the signal is `BUY` (skips `SELL` and `WAIT`). Set to `true` to only receive BUY alerts. | `false` |
 | `INCLUDE_WAIT_SIGNALS` | When `ONLY_SEND_BUY` is `false`, whether to also send `WAIT` signals | `true` |
 
 ### Automated schedule
