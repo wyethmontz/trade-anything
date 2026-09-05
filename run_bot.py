@@ -6,11 +6,13 @@ from datetime import datetime, timezone
 from src.advisor import build_advice
 from src.asset_config import AssetConfig, get_active_asset
 from src.broker_guardrails import BrokerSpec, evaluate_trade_feasibility
+from src.challenge_guardrail import evaluate_challenge_limits, get_or_set_day_start_balance, utc_today
 from src.context_sources import get_asset_news, get_external_asset_news, get_macro_snapshot, score_news_sentiment
 from src.indicators import add_indicators
 from src.journal import get_journal_stats, load_journal
 from src.market_data import get_price_data
 from src.notifier import send_telegram
+from src.prop_firm_rules import get_phase
 from src.signal_tracker import has_open_signal, log_signal, resolve_open_signals
 from src.trading_mode import DEFAULT_TRADING_MODE, get_trading_mode
 
@@ -134,6 +136,21 @@ def main() -> None:
     elif advice.action == "SELL":
         source_alignment = macro_bias <= 0 and news_sentiment <= 10
 
+    challenge_phase_key = os.environ.get("PROP_FIRM_PHASE", asset.prop_firm_phase_key)
+    challenge_result = None
+    if challenge_phase_key:
+        phase = get_phase(challenge_phase_key)
+        challenge_starting_balance = _env_float(
+            "CHALLENGE_STARTING_BALANCE", asset.challenge_starting_balance or account_balance
+        )
+        day_start_balance = get_or_set_day_start_balance(asset.data_symbol, account_balance, utc_today(now))
+        challenge_result = evaluate_challenge_limits(
+            phase=phase,
+            starting_balance=challenge_starting_balance,
+            current_balance=account_balance,
+            day_start_balance=day_start_balance,
+        )
+
     execution_signal = advice.action
     if advice.action != "WAIT":
         if advice.confidence < effective_confidence_floor:
@@ -142,6 +159,9 @@ def main() -> None:
             execution_signal = "WAIT"
         if adaptive_mode and journal_stats.loss_streak >= 2 and not source_alignment:
             execution_signal = "WAIT"
+        if challenge_result is not None and challenge_result.blocked:
+            execution_signal = "WAIT"
+            print(f"[run_bot] {challenge_result.reason}")
 
     downgraded = execution_signal != advice.action
 

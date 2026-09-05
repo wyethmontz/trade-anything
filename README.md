@@ -49,6 +49,18 @@ The app will downgrade a trade to `WAIT` when:
 - The position is not feasible at your risk cap
 - Confidence is below the active floor
 - Adaptive mode detects a losing streak and source misalignment
+- A configured prop-firm challenge phase's max loss or max daily loss limit is breached (see below)
+
+## Prop Firm Challenge Guardrail
+
+When an asset has a `prop_firm_phase_key` set (Gold defaults to `funded`, see `src/prop_firm_rules.py` for the
+`one_step` / `two_step` / `funded` phase definitions), the bot tracks your account balance against that phase's
+max loss and max daily loss limits and forces `WAIT` once either is breached — the same hard-guardrail treatment
+as broker feasibility. Max loss is measured against `CHALLENGE_STARTING_BALANCE` (your funded account's initial
+size); max daily loss is measured against a UTC day-start balance snapshotted automatically in
+`data/challenge_state.csv` the first time the bot runs each day. This only tracks loss limits (the two rules that
+actually gate whether a trade should fire) — target/consistency/payout/profit-share terms are account terms, not
+per-signal guardrails, so they aren't enforced here.
 
 ## Journal Workflow
 
@@ -112,6 +124,8 @@ python run_bot.py
 | `CONFIDENCE_FLOOR` | Minimum confidence to act on a signal | `65` |
 | `ADAPTIVE_MODE` | Tighten risk/confidence after a loss streak | `true` |
 | `XM_SYMBOL`, `CONTRACT_SIZE`, `MIN_LOT`, `LOT_STEP`, `MAX_LOT`, `SPREAD_USD` | Broker guardrail specs | active asset's defaults in `src/asset_config.py` |
+| `PROP_FIRM_PHASE` | Prop-firm challenge phase to enforce (`one_step`, `two_step`, `funded`) from `src/prop_firm_rules.py`, or unset to disable | active asset's `prop_firm_phase_key` (Gold defaults to `funded`) |
+| `CHALLENGE_STARTING_BALANCE` | The funded/challenge account's initial size, used for the max-loss % check | active asset's `challenge_starting_balance`, else `ACCOUNT_BALANCE` |
 | `ONLY_SEND_BUY` | Only send a Telegram message when the signal is `BUY` (skips `SELL` and `WAIT`). Set to `false` to receive all signals again. | `true` |
 | `INCLUDE_WAIT_SIGNALS` | When `ONLY_SEND_BUY` is `false`, whether to also send `WAIT` signals | `true` |
 

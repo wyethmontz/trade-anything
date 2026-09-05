@@ -23,6 +23,8 @@ class AssetConfig:
     bullish_keywords: tuple[str, ...]
     bearish_keywords: tuple[str, ...]
     event_checklist_extra: tuple[str, ...]
+    prop_firm_phase_key: str | None = None  # key into src.prop_firm_rules, or None to disable
+    challenge_starting_balance: float | None = None  # funded account's initial size, for max-loss %
 
 
 GOLD = AssetConfig(
@@ -61,6 +63,7 @@ GOLD = AssetConfig(
         "cooling inflation", "ceasefire", "equity rally",
     ),
     event_checklist_extra=("Geopolitical escalations and central bank gold reserve headlines",),
+    prop_firm_phase_key="funded",
 )
 
 NATURAL_GAS = AssetConfig(
