@@ -243,6 +243,8 @@ with left:
         ("Prior Day Low", key_levels.prior_day_low, "#ff7f0e"),
         ("Prior Week High", key_levels.prior_week_high, "#6a3d9a"),
         ("Prior Week Low", key_levels.prior_week_low, "#8c6b00"),
+        ("Round Number Above", key_levels.round_level_above, "#555555"),
+        ("Round Number Below", key_levels.round_level_below, "#555555"),
     ]
     for label, value, color in key_level_lines:
         if value is not None:
@@ -282,10 +284,11 @@ with right:
     st.markdown("</div>", unsafe_allow_html=True)
 
 st.subheader("Key Levels")
-kl1, kl2, kl3 = st.columns(3)
+kl1, kl2, kl3, kl4 = st.columns(4)
 kl1.metric("Swing High / Low", f"{_kl_fmt(key_levels.swing_high)} / {_kl_fmt(key_levels.swing_low)}")
 kl2.metric("Prior Day High / Low", f"{_kl_fmt(key_levels.prior_day_high)} / {_kl_fmt(key_levels.prior_day_low)}")
 kl3.metric("Prior Week High / Low", f"{_kl_fmt(key_levels.prior_week_high)} / {_kl_fmt(key_levels.prior_week_low)}")
+kl4.metric("Round Number Above / Below", f"{_kl_fmt(key_levels.round_level_above)} / {_kl_fmt(key_levels.round_level_below)}")
 
 st.subheader("Broker Execution Feasibility")
 fx1, fx2, fx3, fx4 = st.columns(4)
