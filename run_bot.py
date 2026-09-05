@@ -70,7 +70,10 @@ def build_message(
         return (
             f"<b>{asset.display_name} Signal — {now.strftime('%Y-%m-%d %H:%M UTC')}</b>\n\n"
             f"{signal_line}\n"
-            f"Trend: {advice.trend} | Confidence: {advice.confidence}%"
+            f"Trend: {advice.trend} | Confidence: {advice.confidence}%\n\n"
+            f"Entry: ${advice.entry:,.2f}\n"
+            f"Take Profit Level: ${advice.take_profit:,.2f}\n"
+            f"Stop Loss Level: ${advice.stop_loss:,.2f}"
             f"{key_levels_block}"
         )
 
