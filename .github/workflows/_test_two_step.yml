@@ -1,0 +1,35 @@
+name: Test two_step phase default (throwaway)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install -r requirements.txt
+      - name: Print active phase for Gold
+        env:
+          ASSET_KEY: gold
+        run: |
+          python -c "
+          from src.asset_config import get_active_asset
+          from src.prop_firm_rules import get_phase
+          asset = get_active_asset()
+          phase = get_phase(asset.prop_firm_phase_key)
+          print('prop_firm_phase_key:', asset.prop_firm_phase_key)
+          print('phase:', phase)
+          "
+      - name: Run bot, force a Telegram send
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          ASSET_KEY: gold
+          TRADING_MODE: swing
+          ONLY_SEND_BUY: "false"
+          INCLUDE_WAIT_SIGNALS: "true"
+        run: python run_bot.py
