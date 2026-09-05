@@ -63,7 +63,7 @@ GOLD = AssetConfig(
         "cooling inflation", "ceasefire", "equity rally",
     ),
     event_checklist_extra=("Geopolitical escalations and central bank gold reserve headlines",),
-    prop_firm_phase_key="funded",
+    prop_firm_phase_key="two_step",
 )
 
 NATURAL_GAS = AssetConfig(
