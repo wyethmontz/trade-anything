@@ -11,6 +11,7 @@ Features:
 
 - Real-time OHLC data pull from Yahoo Finance
 - Candlestick chart with SMA20 and SMA50 overlays
+- Key levels: last confirmed swing high/low plus prior day and prior week high/low, shown on the chart and in every signal
 - RSI and ATR-based setup detection
 - Rule-based BUY / SELL / WAIT signal
 - Simple risk and position size estimation
@@ -50,6 +51,21 @@ The app will downgrade a trade to `WAIT` when:
 - Confidence is below the active floor
 - Adaptive mode detects a losing streak and source misalignment
 - A configured prop-firm challenge phase's max loss or max daily loss limit is breached (see below)
+
+## Key Levels
+
+`src/key_levels.py` computes, from whatever OHLC history the active trading mode fetched:
+
+- **Swing High / Low**: the most recent confirmed pivot — a bar whose high (or low) is the
+  extreme within 5 bars on both sides. The trailing 5 bars are excluded since they can't yet
+  be confirmed as a pivot.
+- **Prior Day / Week High-Low**: the high and low of the most recently *completed* calendar
+  day/week, excluding the still-in-progress current one.
+
+These are informational (shown on the chart and in every Telegram/app signal) and don't feed
+into the advisor's entry/SL/TP or any guardrail. A level shows as unavailable when there isn't
+enough history in the current trading mode's lookback window to confirm it (e.g. Scalp mode's
+5-day window may not contain a fully completed prior week).
 
 ## Prop Firm Challenge Guardrail
 

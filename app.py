@@ -11,6 +11,7 @@ from src.challenge_guardrail import evaluate_challenge_limits, get_or_set_day_st
 from src.context_sources import get_asset_news, get_external_asset_news, get_macro_snapshot, score_news_sentiment
 from src.indicators import add_indicators
 from src.journal import append_trade, get_journal_stats, load_journal
+from src.key_levels import compute_key_levels
 from src.market_data import get_price_data
 from src.prop_firm_rules import get_phase
 
@@ -45,6 +46,10 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
+
+
+def _kl_fmt(value: float | None) -> str:
+    return f"${value:,.2f}" if value is not None else "n/a"
 
 
 @st.cache_data(ttl=120)
@@ -142,6 +147,7 @@ if analysis_df.empty:
     st.stop()
 
 advice = build_advice(analysis_df, account_balance=account_balance, risk_pct=risk_pct)
+key_levels = compute_key_levels(raw_df)
 latest = analysis_df.iloc[-1]
 macro_df, macro_bias = load_macro_data(asset.key, period=macro_period, interval=macro_interval)
 yahoo_news = load_news(asset.key, news_items)
@@ -230,6 +236,23 @@ with left:
             go.Scatter(x=analysis_df.index, y=analysis_df["SMA50"], mode="lines", name="SMA 50"),
         ]
     )
+    key_level_lines = [
+        ("Swing High", key_levels.swing_high, "#008a5e"),
+        ("Swing Low", key_levels.swing_low, "#d23b3b"),
+        ("Prior Day High", key_levels.prior_day_high, "#1f77b4"),
+        ("Prior Day Low", key_levels.prior_day_low, "#ff7f0e"),
+        ("Prior Week High", key_levels.prior_week_high, "#6a3d9a"),
+        ("Prior Week Low", key_levels.prior_week_low, "#8c6b00"),
+    ]
+    for label, value, color in key_level_lines:
+        if value is not None:
+            fig.add_hline(
+                y=value,
+                line=dict(color=color, width=1, dash="dot"),
+                annotation_text=f"{label}: {value:,.2f}",
+                annotation_position="top left",
+                annotation_font_size=10,
+            )
     fig.update_layout(
         height=560,
         margin=dict(l=10, r=10, t=12, b=12),
@@ -257,6 +280,12 @@ with right:
     st.write(f"Risk Amount: ${advice.risk_amount:,.2f}")
     st.write(f"Suggested Size: {advice.position_size_units:,.2f} {asset.unit_label}")
     st.markdown("</div>", unsafe_allow_html=True)
+
+st.subheader("Key Levels")
+kl1, kl2, kl3 = st.columns(3)
+kl1.metric("Swing High / Low", f"{_kl_fmt(key_levels.swing_high)} / {_kl_fmt(key_levels.swing_low)}")
+kl2.metric("Prior Day High / Low", f"{_kl_fmt(key_levels.prior_day_high)} / {_kl_fmt(key_levels.prior_day_low)}")
+kl3.metric("Prior Week High / Low", f"{_kl_fmt(key_levels.prior_week_high)} / {_kl_fmt(key_levels.prior_week_low)}")
 
 st.subheader("Broker Execution Feasibility")
 fx1, fx2, fx3, fx4 = st.columns(4)
