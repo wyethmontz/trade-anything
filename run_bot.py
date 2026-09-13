@@ -10,7 +10,6 @@ from src.challenge_guardrail import evaluate_challenge_limits, get_or_set_day_st
 from src.context_sources import get_asset_news, get_external_asset_news, get_macro_snapshot, score_news_sentiment
 from src.indicators import add_indicators
 from src.journal import get_journal_stats, load_journal
-from src.key_levels import KeyLevels, compute_key_levels
 from src.market_data import get_price_data
 from src.notifier import send_telegram
 from src.prop_firm_rules import get_phase
@@ -23,33 +22,6 @@ def _env_float(name: str, default: float) -> float:
     return float(value) if value else default
 
 
-def _format_key_levels(key_levels: KeyLevels) -> str:
-    lines = []
-    if key_levels.swing_high is not None or key_levels.swing_low is not None:
-        lines.append(
-            f"Swing High/Low: {_fmt(key_levels.swing_high)} / {_fmt(key_levels.swing_low)}"
-        )
-    if key_levels.prior_day_high is not None or key_levels.prior_day_low is not None:
-        lines.append(
-            f"Prior Day High/Low: {_fmt(key_levels.prior_day_high)} / {_fmt(key_levels.prior_day_low)}"
-        )
-    if key_levels.prior_week_high is not None or key_levels.prior_week_low is not None:
-        lines.append(
-            f"Prior Week High/Low: {_fmt(key_levels.prior_week_high)} / {_fmt(key_levels.prior_week_low)}"
-        )
-    if key_levels.round_level_above is not None or key_levels.round_level_below is not None:
-        lines.append(
-            f"Round Numbers Above/Below: {_fmt(key_levels.round_level_above)} / {_fmt(key_levels.round_level_below)}"
-        )
-    if not lines:
-        return ""
-    return "\n\nKey Levels:\n" + "\n".join(lines)
-
-
-def _fmt(value: float | None) -> str:
-    return f"${value:,.2f}" if value is not None else "n/a"
-
-
 def build_message(
     now: datetime,
     asset: AssetConfig,
@@ -58,13 +30,10 @@ def build_message(
     advice,
     feasibility,
     effective_risk_pct: float,
-    key_levels: KeyLevels,
 ) -> str:
     signal_line = f"<b>Signal: {execution_signal}</b>"
     if downgraded:
         signal_line += " (downgraded from advisor by guardrails)"
-
-    key_levels_block = _format_key_levels(key_levels)
 
     if execution_signal == "WAIT":
         return (
@@ -74,7 +43,6 @@ def build_message(
             f"Entry: ${advice.entry:,.2f}\n"
             f"Take Profit Level: ${advice.take_profit:,.2f}\n"
             f"Stop Loss Level: ${advice.stop_loss:,.2f}"
-            f"{key_levels_block}"
         )
 
     price_label = f"{execution_signal.capitalize()} When Price is"
@@ -94,7 +62,6 @@ def build_message(
         f"TP - Entry: ${target_distance:,.2f}\n\n"
         f"Risk: ${advice.risk_amount:,.2f} ({effective_risk_pct:.2f}%)\n"
         f"Suggested Size: {advice.position_size_units:,.2f} {asset.unit_label}"
-        f"{key_levels_block}"
     )
 
 
@@ -129,7 +96,6 @@ def main() -> None:
         return
 
     advice = build_advice(analysis_df, account_balance=account_balance, risk_pct=risk_pct)
-    key_levels = compute_key_levels(raw_df)
 
     print("Fetching macro snapshot and news...")
     macro_df, macro_bias = get_macro_snapshot(asset, period="1mo", interval="1d")
@@ -239,7 +205,6 @@ def main() -> None:
         advice=advice,
         feasibility=feasibility,
         effective_risk_pct=effective_risk_pct,
-        key_levels=key_levels,
     )
 
     print("\n--- MESSAGE PREVIEW ---")
