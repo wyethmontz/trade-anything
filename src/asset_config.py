@@ -138,10 +138,47 @@ BRENT_CRUDE = AssetConfig(
 )
 
 
+BITCOIN = AssetConfig(
+    key="bitcoin",
+    display_name="Bitcoin",
+    data_symbol="BTC-USD",  # Yahoo Finance spot BTC/USD, trades 24/7
+    yahoo_news_symbol="BTC-USD",
+    broker_symbol="BTCUSD",
+    unit_label="BTC",
+    contract_size_per_lot=1.0,
+    min_lot=0.01,
+    lot_step=0.01,
+    max_lot=20.0,
+    spread_estimate=25.0,
+    default_account_balance=64.18,
+    macro_drivers=(
+        {"symbol": "DX-Y.NYB", "name": "US Dollar Index (DXY)", "weight": 25, "direction": -1},
+        {"symbol": "^IXIC", "name": "Nasdaq Composite", "weight": 25, "direction": 1},
+        {"symbol": "^TNX", "name": "US 10Y Yield", "weight": 20, "direction": -1},
+        {"symbol": "^VIX", "name": "VIX", "weight": 15, "direction": -1},
+        {"symbol": "GC=F", "name": "Gold", "weight": 15, "direction": 1},
+    ),
+    news_feed_focus_terms=("bitcoin", "btc", "crypto", "cryptocurrency", "etf", "halving", "blockchain"),
+    bullish_keywords=(
+        "etf inflow", "institutional adoption", "halving", "rate cut", "risk-on",
+        "adoption", "regulatory clarity", "safe haven demand",
+    ),
+    bearish_keywords=(
+        "etf outflow", "regulatory crackdown", "hack", "exchange collapse",
+        "rate hike", "risk-off", "sec lawsuit", "ban",
+    ),
+    event_checklist_extra=(
+        "FOMC rate decisions and broader risk-sentiment shifts",
+        "Major spot ETF flow reports and exchange security incidents",
+    ),
+)
+
+
 _REGISTRY: dict[str, AssetConfig] = {
     GOLD.key: GOLD,
     NATURAL_GAS.key: NATURAL_GAS,
     BRENT_CRUDE.key: BRENT_CRUDE,
+    BITCOIN.key: BITCOIN,
 }
 
 DEFAULT_ASSET_KEY = "natural_gas"
