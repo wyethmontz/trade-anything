@@ -13,7 +13,7 @@ from src.journal import get_journal_stats, load_journal
 from src.market_data import get_price_data
 from src.notifier import send_telegram
 from src.prop_firm_rules import get_phase
-from src.signal_tracker import has_open_signal, log_signal, resolve_open_signals
+from src.signal_tracker import log_signal, resolve_open_signals
 from src.trading_mode import DEFAULT_TRADING_MODE, get_trading_mode
 
 
@@ -175,27 +175,18 @@ def main() -> None:
         interval=trading_mode["resolve_interval"],
     )
 
-    # When polled frequently (e.g. every couple of minutes for scalping), the same
-    # trend can keep firing the same BUY/SELL on every run. Skip logging/notifying
-    # again while that signal is still open — a fresh notification only makes sense
-    # once it resolves (win/loss) and a new setup fires.
-    is_duplicate = False
     if advice.action in ("BUY", "SELL"):
-        is_duplicate = has_open_signal(asset.data_symbol, advice.action)
-        if is_duplicate:
-            print(f"[run_bot] {advice.action} on {asset.data_symbol} is already open and unresolved; skipping duplicate log/notify.")
-        else:
-            log_signal(
-                now=now,
-                symbol=asset.data_symbol,
-                action=advice.action,
-                entry=advice.entry,
-                stop=advice.stop_loss,
-                target=advice.take_profit,
-                confidence=advice.confidence,
-                trend=advice.trend,
-                actionable=(execution_signal == advice.action),
-            )
+        log_signal(
+            now=now,
+            symbol=asset.data_symbol,
+            action=advice.action,
+            entry=advice.entry,
+            stop=advice.stop_loss,
+            target=advice.take_profit,
+            confidence=advice.confidence,
+            trend=advice.trend,
+            actionable=(execution_signal == advice.action),
+        )
 
     message = build_message(
         now=now,
@@ -213,10 +204,6 @@ def main() -> None:
     except UnicodeEncodeError:
         print(message.encode("ascii", errors="replace").decode("ascii"))
     print("-----------------------\n")
-
-    if is_duplicate:
-        print("[run_bot] Skipping Telegram send: duplicate of an already-open signal.")
-        return
 
     include_wait = os.environ.get("INCLUDE_WAIT_SIGNALS", "true").lower() == "true"
     only_send_buy = os.environ.get("ONLY_SEND_BUY", "false").lower() == "true"
