@@ -87,19 +87,6 @@ def log_signal(
     df.to_csv(SIGNAL_LOG_PATH, index=False)
 
 
-def has_open_signal(symbol: str, action: str) -> bool:
-    """True if `symbol` already has an unresolved BUY/SELL logged for `action`.
-
-    Used to avoid re-logging and re-notifying the same setup on every run when the
-    bot is polled frequently (e.g. every couple of minutes for scalping) and the
-    underlying trend hasn't changed since the last run."""
-    df = load_signal_log()
-    if df.empty:
-        return False
-    mask = (df["symbol"] == symbol) & (df["action"] == action) & (df["status"] == "open")
-    return bool(mask.any())
-
-
 def resolve_open_signals(symbol: str, period: str = "3mo", interval: str = "1h") -> None:
     """Check open signals logged against `symbol` against price history since they were
     logged; mark win/loss if stop or target was hit. Open signals for a different symbol

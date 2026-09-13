@@ -150,7 +150,7 @@ python run_bot.py
 
 ### Automated schedule
 
-[.github/workflows/signal.yml](.github/workflows/signal.yml) exposes a `workflow_dispatch` trigger, and [cron-job.org](https://cron-job.org) calls it on a schedule via the GitHub Actions API. Set `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` as repo secrets, and optionally `ASSET_KEY` / `TRADING_MODE` / `ACCOUNT_BALANCE` / `RISK_PCT` as repo variables, before enabling the schedule. Runs are queued (see `concurrency` in the workflow) so overlapping triggers can't race on the signal-log commit, and duplicate BUY/SELL signals from the same still-open setup are skipped automatically (`signal_tracker.has_open_signal`).
+[.github/workflows/signal.yml](.github/workflows/signal.yml) exposes a `workflow_dispatch` trigger, and [cron-job.org](https://cron-job.org) calls it on a schedule via the GitHub Actions API. Set `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` as repo secrets, and optionally `ASSET_KEY` / `TRADING_MODE` / `ACCOUNT_BALANCE` / `RISK_PCT` as repo variables, before enabling the schedule. Runs are queued (see `concurrency` in the workflow) so overlapping triggers can't race on the signal-log commit. Every rule-fired BUY/SELL is logged and notified on every run, even while a same- or opposite-direction signal from an earlier run is still open — there is no de-duplication.
 
 (GitHub Actions' own native `schedule` trigger was tried and dropped — it never fired even a single time in several hours of testing on this repo, while cron-job.org's external calls to `workflow_dispatch` kept working reliably throughout.)
 
