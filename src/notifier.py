@@ -23,6 +23,10 @@ def send_telegram(message: str) -> None:
     try:
         response = requests.post(url, json=payload, timeout=30)
         response.raise_for_status()
+        body = response.json()
+        if not body.get("ok"):
+            print(f"[notifier] Telegram reported failure despite HTTP {response.status_code}: {body}")
+            return
         print("[notifier] Signal sent to Telegram.")
     except requests.exceptions.RequestException as exc:
         print(f"[notifier] Telegram send failed: {exc}")
