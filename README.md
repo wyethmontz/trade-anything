@@ -11,7 +11,7 @@ Features:
 
 - Real-time OHLC data pull from Yahoo Finance
 - Candlestick chart with SMA20 and SMA50 overlays
-- Key levels: last confirmed swing high/low plus prior day and prior week high/low, shown on the chart and in every signal
+- Key levels: last confirmed swing high/low plus prior day and prior week high/low, shown on the app's chart
 - RSI and ATR-based setup detection
 - Rule-based BUY / SELL / WAIT signal
 - Simple risk and position size estimation
@@ -65,10 +65,10 @@ The app will downgrade a trade to `WAIT` when:
   price, at a spacing scaled to the instrument's price magnitude (e.g. $100 steps for ~$4400
   gold, $1 steps for ~$95 oil, $0.10 steps for ~$2.50 natural gas).
 
-These are informational (shown on the chart and in every Telegram/app signal) and don't feed
-into the advisor's entry/SL/TP or any guardrail. A level shows as unavailable when there isn't
-enough history in the current trading mode's lookback window to confirm it (e.g. Scalp mode's
-5-day window may not contain a fully completed prior week).
+These are informational (shown on the app's chart only — Telegram/bot signal messages don't
+include them) and don't feed into the advisor's entry/SL/TP or any guardrail. A level shows as
+unavailable when there isn't enough history in the current trading mode's lookback window to
+confirm it (e.g. Scalp mode's 5-day window may not contain a fully completed prior week).
 
 ## Prop Firm Challenge Guardrail
 
