@@ -1,7 +1,9 @@
 name: Trading Signal Bot
 
 on:
-  workflow_dispatch:  # triggered on a schedule by cron-job.org
+  workflow_dispatch:  # manual/API-triggered runs (e.g. for testing)
+  schedule:
+    - cron: '*/15 * * * *'  # GitHub's own scheduler; no external cron service needed
 
 # Runs are queued instead of running in parallel, so two overlapping triggers
 # (e.g. a short polling interval) can't race on the signal-log commit/push below.
