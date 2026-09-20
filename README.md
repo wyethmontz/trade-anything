@@ -4,8 +4,9 @@ A lightweight, multi-asset trading assistant. Which market it trades is a config
 (`src/asset_config.py`), not a hardcoded assumption — switch it from the app's sidebar,
 or via the `ASSET_KEY` environment variable for the automated bot. Ships with **Gold**
 (XAUUSD proxy via `PAXG-USD`), **Natural Gas** (`NG=F`, XM's `NGASCash`), **Brent
-Crude Oil** (`BZ=F`, XM's `BRENTCash`), and **Bitcoin** (`BTC-USD`, XM's `BTCUSD`)
-configured; add another asset by adding one `AssetConfig` entry.
+Crude Oil** (`BZ=F`, XM's `BRENTCash`), **Bitcoin** (`BTC-USD`, XM's `BTCUSD`), and
+**Ethereum** (`ETH-USD`, XM's `ETHUSD`) configured; add another asset by adding one
+`AssetConfig` entry.
 
 Features:
 
@@ -27,8 +28,8 @@ Features:
 
 - **In the app**: pick from the "Asset" dropdown at the top of the sidebar.
 - **For the automated bot**: set the `ASSET_KEY` environment variable (`gold`,
-  `natural_gas`, `brent_crude`, or `bitcoin`) before running `run_bot.py`, or as a
-  repo variable/secret for the GitHub Actions workflow. Defaults to `natural_gas`.
+  `natural_gas`, `brent_crude`, `bitcoin`, or `ethereum`) before running `run_bot.py`,
+  or as a repo variable/secret for the GitHub Actions workflow. Defaults to `natural_gas`.
 - **To add a new asset**: add an `AssetConfig` entry in `src/asset_config.py` with its
   data symbol, broker symbol, contract spec, macro drivers, and news keywords.
 
@@ -136,7 +137,7 @@ python run_bot.py
 |---|---|---|
 | `TELEGRAM_BOT_TOKEN` | Bot token from BotFather | required to send |
 | `TELEGRAM_CHAT_ID` | Target chat/channel id | required to send |
-| `ASSET_KEY` | Which asset to trade (`gold`, `natural_gas`, `brent_crude`, `bitcoin`) | `natural_gas` |
+| `ASSET_KEY` | Which asset to trade (`gold`, `natural_gas`, `brent_crude`, `bitcoin`, `ethereum`) | `natural_gas` |
 | `TRADING_MODE` | Candle granularity: `scalp` (1m), `intraday` (15m), `swing` (1h), `position` (1d). Also controls how far back open signals are re-checked for a stop/target hit. | `scalp` |
 | `ACCOUNT_BALANCE` | Account balance in USD | active asset's default |
 | `RISK_PCT` | Risk per trade (%) | `0.5` |

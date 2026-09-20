@@ -174,11 +174,48 @@ BITCOIN = AssetConfig(
 )
 
 
+ETHEREUM = AssetConfig(
+    key="ethereum",
+    display_name="Ethereum",
+    data_symbol="ETH-USD",  # Yahoo Finance spot ETH/USD, trades 24/7
+    yahoo_news_symbol="ETH-USD",
+    broker_symbol="ETHUSD",
+    unit_label="ETH",
+    contract_size_per_lot=1.0,
+    min_lot=0.01,
+    lot_step=0.01,
+    max_lot=50.0,
+    spread_estimate=3.0,
+    default_account_balance=64.18,
+    macro_drivers=(
+        {"symbol": "BTC-USD", "name": "Bitcoin", "weight": 25, "direction": 1},
+        {"symbol": "DX-Y.NYB", "name": "US Dollar Index (DXY)", "weight": 20, "direction": -1},
+        {"symbol": "^IXIC", "name": "Nasdaq Composite", "weight": 20, "direction": 1},
+        {"symbol": "^TNX", "name": "US 10Y Yield", "weight": 20, "direction": -1},
+        {"symbol": "^VIX", "name": "VIX", "weight": 15, "direction": -1},
+    ),
+    news_feed_focus_terms=("ethereum", "eth", "crypto", "cryptocurrency", "etf", "defi", "blockchain", "staking"),
+    bullish_keywords=(
+        "etf inflow", "institutional adoption", "staking demand", "rate cut", "risk-on",
+        "adoption", "regulatory clarity", "network upgrade",
+    ),
+    bearish_keywords=(
+        "etf outflow", "regulatory crackdown", "hack", "exchange collapse",
+        "rate hike", "risk-off", "sec lawsuit", "network outage",
+    ),
+    event_checklist_extra=(
+        "FOMC rate decisions and broader risk-sentiment shifts",
+        "Major spot ETF flow reports and Ethereum network upgrade announcements",
+    ),
+)
+
+
 _REGISTRY: dict[str, AssetConfig] = {
     GOLD.key: GOLD,
     NATURAL_GAS.key: NATURAL_GAS,
     BRENT_CRUDE.key: BRENT_CRUDE,
     BITCOIN.key: BITCOIN,
+    ETHEREUM.key: ETHEREUM,
 }
 
 DEFAULT_ASSET_KEY = "natural_gas"
