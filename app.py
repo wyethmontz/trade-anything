@@ -12,6 +12,7 @@ from src.context_sources import get_asset_news, get_external_asset_news, get_mac
 from src.indicators import add_indicators
 from src.journal import append_trade, get_journal_stats, load_journal
 from src.key_levels import compute_key_levels
+from src.smc_structure import compute_smc_structure
 from src.market_data import get_price_data
 from src.prop_firm_rules import get_phase
 
@@ -148,6 +149,7 @@ if analysis_df.empty:
 
 advice = build_advice(analysis_df, account_balance=account_balance, risk_pct=risk_pct)
 key_levels = compute_key_levels(raw_df)
+smc = compute_smc_structure(raw_df)
 latest = analysis_df.iloc[-1]
 macro_df, macro_bias = load_macro_data(asset.key, period=macro_period, interval=macro_interval)
 yahoo_news = load_news(asset.key, news_items)
@@ -255,6 +257,25 @@ with left:
                 annotation_position="top left",
                 annotation_font_size=10,
             )
+    if smc.last_event_level is not None:
+        fig.add_hline(
+            y=smc.last_event_level,
+            line=dict(color="#0a5", width=1.5, dash="dash"),
+            annotation_text=f"{smc.last_event_label} level: {smc.last_event_level:,.2f}",
+            annotation_position="bottom left",
+            annotation_font_size=10,
+        )
+    if smc.order_block_low is not None and smc.order_block_high is not None:
+        fig.add_hrect(
+            y0=smc.order_block_low,
+            y1=smc.order_block_high,
+            fillcolor="#e6a817",
+            opacity=0.18,
+            line_width=0,
+            annotation_text="Order Block",
+            annotation_position="top left",
+            annotation_font_size=10,
+        )
     fig.update_layout(
         height=560,
         margin=dict(l=10, r=10, t=12, b=12),
@@ -289,6 +310,25 @@ kl1.metric("Swing High / Low", f"{_kl_fmt(key_levels.swing_high)} / {_kl_fmt(key
 kl2.metric("Prior Day High / Low", f"{_kl_fmt(key_levels.prior_day_high)} / {_kl_fmt(key_levels.prior_day_low)}")
 kl3.metric("Prior Week High / Low", f"{_kl_fmt(key_levels.prior_week_high)} / {_kl_fmt(key_levels.prior_week_low)}")
 kl4.metric("Round Number Above / Below", f"{_kl_fmt(key_levels.round_level_above)} / {_kl_fmt(key_levels.round_level_below)}")
+
+st.subheader("Smart Money Structure")
+sm1, sm2, sm3, sm4 = st.columns(4)
+sm1.metric("Structure Trend", smc.trend)
+last_event = f"{smc.last_event_label} ({smc.last_event_direction})" if smc.last_event_label else "None yet"
+sm2.metric("Last BOS / CHoCH", last_event)
+sm2.caption(f"Level: {_kl_fmt(smc.last_event_level)}")
+sm3.metric(
+    "Order Block",
+    f"{_kl_fmt(smc.order_block_low)} - {_kl_fmt(smc.order_block_high)}"
+    if smc.order_block_low is not None
+    else "None",
+)
+sweep_label = f"{smc.sweep_direction} @ {_kl_fmt(smc.sweep_level)}" if smc.sweep_direction else "None recent"
+sm4.metric("Liquidity Sweep", sweep_label)
+st.caption(
+    "Informational only, like Key Levels above -- doesn't feed the advisor's entry/SL/TP or any guardrail. "
+    "BOS = Break of Structure (trend continuation). CHoCH = Change of Character (first break against the prior trend)."
+)
 
 st.subheader("Broker Execution Feasibility")
 fx1, fx2, fx3, fx4 = st.columns(4)
