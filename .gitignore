@@ -5,4 +5,5 @@ __pycache__/
 venv/
 data/*
 !data/signal_log.csv
+!data/smc_signal_state.csv
 .env
