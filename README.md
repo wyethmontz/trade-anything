@@ -163,3 +163,34 @@ python run_bot.py
 docker build -t trading-signal-bot .
 docker run -e TELEGRAM_BOT_TOKEN=your_bot_token -e TELEGRAM_CHAT_ID=your_chat_id -e ASSET_KEY=natural_gas trading-signal-bot
 ```
+
+## SMC Signal Bot
+
+`run_smc_bot.py` is a second, independent bot -- a top-down Smart Money Concepts signal, separate from the SMA/RSI-based `run_bot.py` above. It only ever notifies, same as `run_bot.py`; it never places trades.
+
+It works the way a discretionary SMC trader reads a chart, across three timeframes fetched every run:
+
+- **H1** sets the **bias** -- the only direction allowed to trade.
+- **M15** sets the **zone** -- the most recent order block that agrees with that bias becomes the level to wait for a retest of. No zone is watched at all if M15's own structure disagrees with H1.
+- **M1** is the **trigger** -- scanned candle-by-candle since the last run (not just the newest candle, so a setup that fully forms and resolves between two 15-minute runs isn't missed), for a close confirming rejection (or a held break) of that zone.
+
+A message only fires when, on top of that, an **inducement** (a liquidity sweep since the zone formed, confirming genuine stop-hunt manipulation rather than a clean, un-manipulated arrival) is present, and a **real target** exists -- a prior swept level, or failing that an untested opposing swing point. If neither exists, the setup is silently skipped rather than sent with an invented risk-reward multiple. Nothing else -- no BOS/CHoCH noise, no WAIT messages -- reaches Telegram.
+
+Because each run is stateless, it persists a small watermark (`data/smc_signal_state.csv`, committed back by the workflow, same pattern as `data/signal_log.csv`) marking the newest M1 candle it has already scanned.
+
+### Run locally
+
+```powershell
+$env:TELEGRAM_BOT_TOKEN = "your_bot_token"
+$env:TELEGRAM_CHAT_ID = "your_chat_id"
+$env:ASSET_KEY = "gold"
+python run_smc_bot.py
+```
+
+### Automated schedule
+
+[.github/workflows/smc_signal.yml](.github/workflows/smc_signal.yml) exposes its own `workflow_dispatch` trigger, separate from `signal.yml`'s. Point your own external scheduler (e.g. [cron-job.org](https://cron-job.org), same as the other bot) at it via the GitHub Actions API, calling it roughly every 15 minutes. Set `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` as repo secrets (shared with the other bot) and optionally `ASSET_KEY` as a repo variable (defaults to `gold`) before enabling it.
+
+**Data source caveat:** same as `run_bot.py` -- Yahoo Finance (`PAXG-USD` for gold), not a live XM/MT5 feed. Expect prices to run a few dollars off your broker's actual quote.
+
+**Note:** this bot and `run_bot.py` are independent -- different signal logic, different entry points, different workflows -- and currently post to the same Telegram chat without being reconciled against each other. Treat a signal from one as a separate opinion, not a confirmation of the other.

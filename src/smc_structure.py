@@ -79,7 +79,7 @@ def _zigzag(swings: list[SwingPoint]) -> list[SwingPoint]:
     return pruned
 
 
-def _order_block(df: pd.DataFrame, break_index: int, direction: Direction) -> tuple[float, float] | None:
+def find_order_block(df: pd.DataFrame, break_index: int, direction: Direction) -> tuple[float, float] | None:
     """Last opposite-colored candle before the impulse that caused the break."""
     want_bearish_candle = direction == "bullish"  # bullish break -> OB is the last down-close candle
     lo = max(0, break_index - ORDER_BLOCK_LOOKBACK)
@@ -162,6 +162,23 @@ def _liquidity_sweeps(df: pd.DataFrame, zz: list[SwingPoint]) -> list[tuple[int,
     return sweeps
 
 
+def analyze_structure(
+    df: pd.DataFrame, fractal_legs: int = FRACTAL_LEGS
+) -> tuple[list[SwingPoint], list[StructureEvent], list[tuple[int, pd.Timestamp, float, Direction]]]:
+    """The full swing/event/sweep history (not just the latest) -- for callers
+    that need to scan a window of candles rather than only the newest one,
+    e.g. a bot that runs periodically and must not miss what happened between
+    runs. compute_smc_structure() below is the single-latest-value view of
+    the same computation, built on top of this."""
+    if df.empty or len(df) < fractal_legs * 2 + 3:
+        return [], [], []
+    swings = _find_fractal_swings(df, fractal_legs)
+    zz = _zigzag(swings)
+    events = _structure_events(df, zz)
+    sweeps = _liquidity_sweeps(df, zz)
+    return swings, events, sweeps
+
+
 def compute_smc_structure(df: pd.DataFrame, fractal_legs: int = FRACTAL_LEGS) -> SmcStructure:
     """Break of structure (BOS), change of character (CHoCH), the order block
     behind the latest break, and any recent liquidity sweep — computed from
@@ -174,10 +191,7 @@ def compute_smc_structure(df: pd.DataFrame, fractal_legs: int = FRACTAL_LEGS) ->
     if df.empty or len(df) < fractal_legs * 2 + 3:
         return empty
 
-    swings = _find_fractal_swings(df, fractal_legs)
-    zz = _zigzag(swings)
-    events = _structure_events(df, zz)
-    sweeps = _liquidity_sweeps(df, zz)
+    _, events, sweeps = analyze_structure(df, fractal_legs)
 
     trend = "Unknown"
     last_event_label = last_event_direction = None
@@ -192,7 +206,7 @@ def compute_smc_structure(df: pd.DataFrame, fractal_legs: int = FRACTAL_LEGS) ->
         last_event_direction = last.direction
         last_event_level = last.level
         last_event_time = last.time
-        ob = _order_block(df, last.index, last.direction)
+        ob = find_order_block(df, last.index, last.direction)
         if ob is not None:
             order_block_low, order_block_high = ob
 
